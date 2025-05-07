@@ -7,7 +7,7 @@ terraform {
   }
   backend "s3" {
     bucket = "il01-terraform-states"
-    key    = "il01/service/production/terraform.tfstate"
+    key    = "il01/service/staging/terraform.tfstate"
     region = "us-east-2"
   }
 }
@@ -18,5 +18,5 @@ provider "aws" {
 
 module "service" {
   source = "../../modules/service"
-  infra_env = "prod"
+  infra_env = "stg"
 }
