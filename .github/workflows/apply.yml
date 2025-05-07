@@ -15,10 +15,13 @@ permissions:
 jobs:
   terraform-apply:
     if: ${{false}}
+    strategy:
+      matrix:
+        environment: ["staging", "production"]
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./environments/production
+        working-directory: ./environments/${{ matrix.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,12 +35,10 @@ jobs:
       - name: Download plan
         uses: dawidd6/action-download-artifact@v9
         with:
-          path: ./environments/production
+          path: ./environments/${{ matrix.environment }}
           workflow: plan.yml
           pr: ${{github.event.pull_request.number}}
-
-      - name: Move tfplan to cwd
-        run: mv ./terraform-plan/tfplan ./tfplan
+          name: terraform-plan-${{ matrix.environment }}
 
       - name: Apply plan
         run: terraform apply -input=false -auto-approve -no-color tfplan
