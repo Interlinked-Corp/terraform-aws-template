@@ -6,9 +6,11 @@ terraform {
     }
   }
   backend "s3" {
-    bucket = "il01-terraform-states"
-    key    = "il01/service/staging/terraform.tfstate"
-    region = "us-east-2"
+    bucket       = "il01-terraform-states"
+    key          = "il01/service/staging/terraform.tfstate"
+    region       = "us-east-2"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
@@ -17,6 +19,6 @@ provider "aws" {
 }
 
 module "service" {
-  source = "../../modules/service"
+  source    = "../../modules/service"
   infra_env = "stg"
 }
