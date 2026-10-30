@@ -11,6 +11,7 @@ env:
 permissions:
   actions: read
   contents: read
+  pull-requests: read
 
 jobs:
   terraform-apply:
@@ -32,13 +33,41 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Resolve merged pull request
+        id: merged_pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+            });
+
+            const mergedPull = pulls.find((pull) =>
+              pull.merged_at &&
+              pull.base.ref === context.payload.repository.default_branch &&
+              pull.merge_commit_sha === context.sha
+            );
+
+            if (!mergedPull) {
+              core.setFailed(`No merged pull request found for ${context.sha}; refusing to apply an unbound Terraform plan.`);
+              return;
+            }
+
+            core.info(`Using Terraform plan from PR #${mergedPull.number} (${mergedPull.head.sha}).`);
+            core.setOutput('number', String(mergedPull.number));
+
       - name: Download plan
-        uses: dawidd6/action-download-artifact@v9
+        # Bind the plan to the PR merged by this push. With no selector, this
+        # action downloads the latest successful plan from any PR.
+        uses: dawidd6/action-download-artifact@8305c0f1062bb0d184d09ef4493ecb9288447732 # v20
         with:
           path: ./environments/${{ matrix.environment }}
           workflow: plan.yml
-          pr: ${{github.event.pull_request.number}}
+          pr: ${{ steps.merged_pr.outputs.number }}
           name: terraform-plan-${{ matrix.environment }}
+          if_no_artifact_found: fail
 
       - name: Apply plan
         run: terraform apply -input=false -auto-approve -no-color tfplan
